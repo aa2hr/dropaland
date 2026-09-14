@@ -115,9 +115,9 @@ html[dir="rtl"] .panelCard::before{left:auto;right:0}
 #m3Board{display:grid;gap:4px;width:min(92vw,420px);aspect-ratio:1;background:#0d1120;border:1px solid #234;border-radius:8px;padding:8px}
 .m3tile{border-radius:6px;background:#12081a;border:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer}
 .m3tile.sel{box-shadow:0 0 0 2px #fff}
-.overlay{display:none;position:fixed;inset:0;z-index:200;background:#070912;align-items:center;justify-content:center;padding:22px;pointer-events:none}
+.overlay{display:none;position:fixed;inset:0;z-index:200;background:#070912;flex-direction:column;align-items:center;padding:22px;pointer-events:none;overflow-y:auto}
 .overlay.show{display:flex;pointer-events:auto}
-.modal{width:min(92vw,540px);border:1px solid var(--line);background:#0d1120;border-radius:16px;padding:24px;text-align:center}
+.modal{width:min(92vw,540px);border:1px solid var(--line);background:#0d1120;border-radius:16px;padding:24px;text-align:center;margin:auto 0;flex:none}
 .modal h2{margin:8px 0;color:var(--gold)}
 .modal p{font-size:14px;line-height:1.7;color:#c5d0c6}
 .quote{color:#ffd96d;font-style:italic}
@@ -197,9 +197,9 @@ footer{text-align:center;margin-top:22px;font:11px "Space Mono",monospace;color:
 .overlay.hall{padding:max(16px,env(safe-area-inset-top)) 16px max(20px,env(safe-area-inset-bottom));background:
   radial-gradient(ellipse 60% 40% at 50% 8%, rgba(255,210,76,.10), transparent 55%),
   radial-gradient(ellipse 80% 50% at 50% 100%, rgba(124,255,106,.07), transparent 60%),
-  #070912;align-items:center;justify-content:center}
-.overlay.hall .modal.gate{width:min(94vw,520px);max-width:100%;margin:0 auto;border:0;background:transparent;border-radius:0;box-shadow:none;
-  max-height:none;overflow:visible;padding:8px 8px 16px}
+  #070912;align-items:center}
+.overlay.hall .modal.gate{width:min(94vw,520px);max-width:100%;margin:auto auto;border:0;background:transparent;border-radius:0;box-shadow:none;
+  max-height:none;overflow:visible;padding:8px 8px 16px;flex:none}
 .overlay.hall .gateHero{overflow:visible;min-height:0;position:relative}
 .overlay.hall .gateHero .crown{width:96px;height:72px;margin:0 auto 10px;flex:none}
 .overlay.hall .gateHero .brand{font-size:clamp(28px,7vw,44px);letter-spacing:.06em;white-space:nowrap;overflow:visible;line-height:1.15;padding:0 4px}
@@ -834,7 +834,9 @@ html.phone .hot{width:42px;height:42px}
     } ]
   };
   window.DROPALAND_CHARTER = CHARTER;
-  const API_BASE = location.port === "3002" ? "" : "http://" + location.hostname + ":3002";
+  const PRODUCTION_API_URL = "";
+  const isLocalDev = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+  const API_BASE = isLocalDev && location.port !== "3002" ? "http://" + location.hostname + ":3002" : PRODUCTION_API_URL;
   const LIVE_LB = "dropaland:live:players";
   const LIVE_Q = "dropaland:live:queue";
   function todayUTC() {
