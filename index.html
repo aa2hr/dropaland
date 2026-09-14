@@ -3,7 +3,9 @@
 <html lang="en" dir="ltr">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src data: blob: 'self'; connect-src 'self' http://127.0.0.1:3002 http://localhost:3002; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta name="theme-color" content="#070912">
+<style>html,body{background:#070912;color:#EAF0E6;margin:0}</style>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src data: blob: 'self'; connect-src 'self' http://127.0.0.1:3002 http://localhost:3002 https://robinhoodchain.blockscout.com; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -11,7 +13,7 @@
 <title>DROPALAND — The Living Kingdom</title>
 <meta name="description" content="DROPALAND — a living village on Robinhood Chain. Follow the trail, keep Pepe back, reach the palace.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Space+Mono:wght@400;700&family=Vazirmatn:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Space+Mono:wght@400;700&family=Vazirmatn:wght@400;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
 
 :root{
@@ -142,6 +144,7 @@ html[dir="rtl"] .panelCard::before{left:auto;right:0}
 .badgeRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
 .badge{font:10px "Space Mono",monospace;letter-spacing:.06em;border:1px solid var(--line);border-radius:999px;padding:5px 10px;color:var(--gold)}
 .badge.ok{color:var(--green);border-color:rgba(124,255,106,.35)}
+.hint2 a#lbFollow,.hint2 a.xTask{color:var(--gold);text-decoration:underline;text-underline-offset:2px}
 .hint2{font-size:12px;color:var(--muted);line-height:1.6;margin:6px 0 0}
 footer{text-align:center;margin-top:22px;font:11px "Space Mono",monospace;color:var(--muted);line-height:1.7}
 
@@ -685,7 +688,7 @@ html.phone .hot{width:42px;height:42px}
           <button class="btn ghost" id="claimBtn" type="button">Claim</button>
         </div>
         <p class="hint2" id="holdHint"></p>
-        <label class="hint2" style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" id="taskFollow"> <span id="lbFollow">Followed @dropaalpha</span></label>
+        <label class="hint2" style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" id="taskFollow"> <a id="lbFollow" href="https://x.com/dropaalpha" target="_blank" rel="noopener noreferrer">Followed @dropaalpha</a></label>
         <label class="hint2" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="taskRepost"> <span id="lbRepost">Reposted (self-report)</span></label>
         <label class="hint2" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="taskComment"> <span id="lbComment">Commented (self-report)</span></label>
         <input type="text" id="hpCompany" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
@@ -925,11 +928,22 @@ html.phone .hot{width:42px;height:42px}
       } catch (e) {}
       node = "local-adapter";
       CHARTER.online.node = node;
+      let holderCount = null;
+      try {
+        const br = await fetch("https://robinhoodchain.blockscout.com/api/v2/tokens/0x435D62839ce479fD479E87A8607f7fFdbdEe8bA3/counters", {
+          headers: { Accept: "application/json" }
+        });
+        if (br.ok) {
+          const bj = await br.json();
+          const n = Number(bj && bj.token_holders_count);
+          if (Number.isFinite(n)) holderCount = n;
+        }
+      } catch (e2) {}
       return {
         ok: true,
         node: node,
         block: null,
-        holderCount: null
+        holderCount: holderCount
       };
     }
     async function post(path, body) {
