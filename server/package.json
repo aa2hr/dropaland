@@ -2,9 +2,9 @@
   "name": "dropaland-chain-server",
   "private": true,
   "version": "1.0.0",
-  "main": "chain-server.js",
+  "main": "server-chain-server.js",
   "scripts": {
-    "start": "node chain-server.js"
+    "start": "node server-chain-server.js"
   },
   "engines": {
     "node": ">=18"
