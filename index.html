@@ -706,7 +706,7 @@ html.phone .hot{width:42px;height:42px}
         <div class="reg" id="regList"></div>
       </div>
       <div class="panelCard">
-        <div class="panelTitle">VILLAGE SHARE</div>
+        <div class="panelTitle">VILLAGE CLAIM</div>
         <p class="hint2" id="airdropIntro" style="margin-bottom:10px">Connect your wallet to check if you're on the list.</p>
         <div id="airdropResult"></div>
       </div>
@@ -8464,7 +8464,7 @@ html.phone .hot{width:42px;height:42px}
       }
     });
   }
-  const CLAIM_CONTRACT_ADDRESS = "";
+  const CLAIM_CONTRACT_ADDRESS = "0xDF577B5A3a4e652dc93974E4c4f73BcfbE6E787C";
   let airdropClaimsCache = null;
   function checkAirdrop() {
     const box = el("airdropResult");
@@ -8493,7 +8493,7 @@ html.phone .hot{width:42px;height:42px}
     loadClaims.then(function(claims) {
       const entry = claims[state.wallet.toLowerCase()];
       if (!entry) {
-        box.innerHTML = '<p class="hint2">This wallet isn\'t on the village list.</p>';
+        box.innerHTML = '<p class="hint2">This wallet isn\'t on the claim list.</p>';
         return;
       }
       const eth = window.ethereum;
@@ -8519,7 +8519,7 @@ html.phone .hot{width:42px;height:42px}
         box.innerHTML = '<p class="hint2">Couldn\'t check claim status. Try again shortly.</p>';
       });
     }).catch(function() {
-      box.innerHTML = '<p class="hint2">Couldn\'t load the list. Try again shortly.</p>';
+      box.innerHTML = '<p class="hint2">Couldn\'t load the claim list. Try again shortly.</p>';
     });
   }
   function encodeClaimCall(amount, proof) {
