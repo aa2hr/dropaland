@@ -147,6 +147,8 @@ html[dir="rtl"] .panelCard::before{left:auto;right:0}
 .badge.ok{color:var(--green);border-color:rgba(124,255,106,.35)}
 .hint2 a#lbFollow,.hint2 a.xTask{color:var(--gold);text-decoration:underline;text-underline-offset:2px}
 .hint2{font-size:12px;color:var(--muted);line-height:1.6;margin:6px 0 0}
+.mobileWalletLinks{display:inline-block;margin-top:6px}
+.mobileWalletLinks a{color:var(--gold);text-decoration:underline}
 footer{text-align:center;margin-top:22px;font:11px "Space Mono",monospace;color:var(--muted);line-height:1.7}
 
 .topbar{display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;flex-wrap:wrap;margin-bottom:20px;padding:22px 16px 16px;position:relative;border-radius:16px;background:#0a0e19;contain:layout style}
@@ -702,6 +704,11 @@ html.phone .hot{width:42px;height:42px}
       <div class="panelCard">
         <div class="panelTitle" id="regTitle">REGISTRY</div>
         <div class="reg" id="regList"></div>
+      </div>
+      <div class="panelCard">
+        <div class="panelTitle">VILLAGE SHARE</div>
+        <p class="hint2" id="airdropIntro" style="margin-bottom:10px">Connect your wallet to check if you're on the list.</p>
+        <div id="airdropResult"></div>
       </div>
       <div class="panelCard">
         <div class="panelTitle">THE VILLAGE MARKET</div>
@@ -8322,14 +8329,23 @@ html.phone .hot{width:42px;height:42px}
   function hintBox(id) {
     return el(id) || el("recHint");
   }
+  function offerMobileWallets(box) {
+    if (!box) return;
+    const host = location.host + location.pathname;
+    const links = [
+      { name: "MetaMask", url: "https://metamask.app.link/dapp/" + host },
+      { name: "Trust Wallet", url: "https://link.trustwallet.com/open_url?coin_id=60&url=" + encodeURIComponent(location.href) },
+      { name: "Coinbase Wallet", url: "https://go.cb-w.com/dapp?cb_url=" + encodeURIComponent(location.href) }
+    ];
+    box.innerHTML = t("needInject") + '<br><span class="mobileWalletLinks">' +
+      links.map(function(l) { return '<a href="' + l.url + '" rel="noopener noreferrer">' + l.name + "</a>"; }).join(" · ") +
+      "</span>";
+  }
   function connectWallet(hintId) {
     const box = hintBox(hintId);
     const eth = window.ethereum;
     if (!eth || !eth.request) {
-      if (box) {
-        box.dataset.msg = "needInject";
-        box.textContent = t("needInject");
-      }
+      offerMobileWallets(box);
       return;
     }
     eth.request({
@@ -8343,6 +8359,7 @@ html.phone .hot{width:42px;height:42px}
       if (el("recWal")) el("recWal").value = w;
       if (el("hallWal")) el("hallWal").value = w;
       state.wallet = w;
+      checkAirdrop();
       if (el("recName") || el("recX")) persistRecord("savedRec"); else {
         save();
         update();
@@ -8447,8 +8464,104 @@ html.phone .hot{width:42px;height:42px}
       }
     });
   }
+  const CLAIM_CONTRACT_ADDRESS = "";
+  let airdropClaimsCache = null;
+  function checkAirdrop() {
+    const box = el("airdropResult");
+    const intro = el("airdropIntro");
+    if (!box) return;
+    if (!state.wallet) {
+      if (intro) intro.textContent = "Connect your wallet to check if you're on the list.";
+      box.innerHTML = "";
+      return;
+    }
+    if (!CLAIM_CONTRACT_ADDRESS) {
+      if (intro) intro.textContent = "Claim isn't live yet — check back soon.";
+      box.innerHTML = "";
+      return;
+    }
+    if (intro) intro.textContent = "";
+    box.innerHTML = '<p class="hint2">Checking the list…</p>';
+
+    const loadClaims = airdropClaimsCache
+      ? Promise.resolve(airdropClaimsCache)
+      : fetch("claims.json").then(function(r) { return r.json(); }).then(function(j) {
+          airdropClaimsCache = j;
+          return j;
+        });
+
+    loadClaims.then(function(claims) {
+      const entry = claims[state.wallet.toLowerCase()];
+      if (!entry) {
+        box.innerHTML = '<p class="hint2">This wallet isn\'t on the village list.</p>';
+        return;
+      }
+      const eth = window.ethereum;
+      const claimedSelector = "c884ef83";
+      const claimedData = "0x" + claimedSelector + state.wallet.slice(2).toLowerCase().padStart(64, "0");
+      eth.request({
+        method: "eth_call",
+        params: [{ to: CLAIM_CONTRACT_ADDRESS, data: claimedData }, "latest"]
+      }).then(function(result) {
+        const alreadyClaimed = result && result.slice(-1) === "1";
+        if (alreadyClaimed) {
+          box.innerHTML = '<p class="hint2">You\'ve already claimed ' + entry.amountDisplay + ' $DROPA. ✓</p>';
+          return;
+        }
+        box.innerHTML =
+          '<p class="hint2">You can claim <strong style="color:var(--gold)">' + entry.amountDisplay + ' $DROPA</strong>.</p>' +
+          '<button class="btn" type="button" id="claimBtn2">Claim now</button>' +
+          '<p class="hint2" id="claimStatus"></p>';
+        el("claimBtn2").onclick = function() {
+          submitClaim(entry.amount, entry.proof);
+        };
+      }).catch(function() {
+        box.innerHTML = '<p class="hint2">Couldn\'t check claim status. Try again shortly.</p>';
+      });
+    }).catch(function() {
+      box.innerHTML = '<p class="hint2">Couldn\'t load the list. Try again shortly.</p>';
+    });
+  }
+  function encodeClaimCall(amount, proof) {
+    const selector = "2f52ebb7";
+    const amountHex = BigInt(amount).toString(16).padStart(64, "0");
+    const offsetHex = (64).toString(16).padStart(64, "0");
+    const lengthHex = proof.length.toString(16).padStart(64, "0");
+    const elements = proof.map(function(p) { return p.slice(2).padStart(64, "0"); }).join("");
+    return "0x" + selector + amountHex + offsetHex + lengthHex + elements;
+  }
+  function submitClaim(amount, proof) {
+    const statusEl = el("claimStatus");
+    const btn = el("claimBtn2");
+    if (btn) btn.disabled = true;
+    if (statusEl) statusEl.textContent = "Confirm the transaction in your wallet…";
+    const eth = window.ethereum;
+    const data = encodeClaimCall(amount, proof);
+    eth.request({
+      method: "eth_sendTransaction",
+      params: [{ from: state.wallet, to: CLAIM_CONTRACT_ADDRESS, data: data }]
+    }).then(function(txHash) {
+      if (statusEl) statusEl.textContent = "Submitted. Waiting for confirmation…";
+      const check = setInterval(function() {
+        eth.request({ method: "eth_getTransactionReceipt", params: [txHash] }).then(function(receipt) {
+          if (!receipt) return;
+          clearInterval(check);
+          if (receipt.status === "0x1") {
+            checkAirdrop();
+          } else {
+            if (statusEl) statusEl.textContent = "Transaction failed.";
+            if (btn) btn.disabled = false;
+          }
+        });
+      }, 3000);
+    }).catch(function(err) {
+      if (statusEl) statusEl.textContent = (err && err.message) ? err.message : "Transaction was cancelled or failed.";
+      if (btn) btn.disabled = false;
+    });
+  }
   refreshVillagePill();
   setInterval(refreshVillagePill, 2e4);
+  if (state.wallet) checkAirdrop();
   LiveNet.ping().then(function() {
     return LiveNet.leaderboard();
   }).then(function() {
