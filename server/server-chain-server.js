@@ -28,7 +28,7 @@ const POLL_INTERVAL_MS = Number(process.env.CHAIN_POLL_INTERVAL_MS || 15e3);
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
 
-const RPC_URL = `https://robinhood-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
+const RPC_URL = process.env.RPC_URL || (ALCHEMY_API_KEY ? `https://robinhood-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}` : "https://rpc.mainnet.chain.robinhood.com");
 
 const REWARD_QUEUE_PATH = path.join(__dirname, "reward-queue.json");
 
@@ -83,9 +83,8 @@ const ERC20_TRANSFER_ABI = [ "event Transfer(address indexed from, address index
 
 const BLOCKSCOUT_BASE = process.env.BLOCKSCOUT_BASE || "https://robinhoodchain.blockscout.com";
 
-if (!ALCHEMY_API_KEY) {
-  console.error("[Chain] Missing ALCHEMY_API_KEY — copy .env.example to .env and fill it in.");
-  process.exit(1);
+if (!ALCHEMY_API_KEY && !process.env.RPC_URL) {
+  console.warn("[Chain] No ALCHEMY_API_KEY — using public Robinhood RPC.");
 }
 
 const provider = new ethers.JsonRpcProvider(RPC_URL);
@@ -195,10 +194,12 @@ async function getRealHolderCount() {
   const url = `${BLOCKSCOUT_BASE}/api/v2/tokens/${CONTRACT_ADDRESS}/counters`;
   const res = await fetch(url, {
     headers: {
-      Accept: "application/json"
+      Accept: "application/json",
+      "User-Agent": "Mozilla/5.0 (compatible; DROPALAND/1.0; +https://dropaalpha.xyz)",
+      Referer: BLOCKSCOUT_BASE + "/"
     }
   });
-  if (!res.ok) throw new Error(`Blockscout responded ${res.status}`);
+  if (!res.ok) throw new Error("Blockscout responded " + res.status);
   const data = await res.json();
   const count = Number(data.token_holders_count);
   if (!Number.isFinite(count)) throw new Error("Blockscout returned a non-numeric holder count");
@@ -208,13 +209,14 @@ async function getRealHolderCount() {
 async function pollChain() {
   try {
     const currentBlock = await provider.getBlockNumber();
-    const holderCount = await getRealHolderCount();
-    latestSnapshot = {
-      block: currentBlock,
-      holderCount: holderCount
-    };
+    latestSnapshot.block = currentBlock;
   } catch (err) {
-    console.error("[Chain] poll failed:", err.message);
+    console.error("[Chain] block poll failed:", err.message);
+  }
+  try {
+    latestSnapshot.holderCount = await getRealHolderCount();
+  } catch (err) {
+    console.error("[Chain] holder poll failed:", err.message);
   }
 }
 
