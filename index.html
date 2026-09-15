@@ -6,7 +6,7 @@
 <meta charset="UTF-8">
 <meta name="theme-color" content="#070912">
 <style>html,body{background:#070912;color:#EAF0E6;margin:0}</style>
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src data: blob: 'self'; connect-src 'self' http://127.0.0.1:3002 http://localhost:3002 https://robinhoodchain.blockscout.com; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src data: blob: 'self'; connect-src 'self' http://127.0.0.1:3002 http://localhost:3002 https://robinhoodchain.blockscout.com https://dropaland.onrender.com; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -582,7 +582,14 @@ html.phone .hot{width:42px;height:42px}
 .gateHero .crown{width:96px;height:72px}
 
 </style>
-<script>if(window.top!==window.self){document.documentElement.style.display="none";window.top.location=window.self.location;}</script>
+<script>
+if (window.top !== window.self) {
+  try {
+    window.top.location = window.self.location;
+    document.documentElement.style.display = "none";
+  } catch (e) {}
+}
+</script>
 </head>
 <body>
 <div class="pond-bg"></div>
@@ -689,7 +696,6 @@ html.phone .hot{width:42px;height:42px}
         <div class="actions" style="justify-content:flex-start;margin-top:8px">
           <button class="btn ghost" id="checkinBtn" type="button">Check in</button>
           <button class="btn ghost" id="queueBtn" type="button">Queue review</button>
-          <button class="btn ghost" id="claimBtn" type="button">Claim</button>
         </div>
         <p class="hint2" id="holdHint"></p>
         <label class="hint2" style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" id="taskFollow"> <a id="lbFollow" href="https://x.com/dropaalpha" target="_blank" rel="noopener noreferrer">Followed @dropaalpha</a></label>
@@ -708,6 +714,7 @@ html.phone .hot{width:42px;height:42px}
       <div class="panelCard">
         <div class="panelTitle">VILLAGE SHARE</div>
         <p class="hint2" id="airdropIntro" style="margin-bottom:10px">Connect your wallet to check if you're on the list.</p>
+        <button class="btn ghost" id="airdropConnectBtn" type="button">Connect wallet</button>
         <div id="airdropResult"></div>
       </div>
       <div class="panelCard">
@@ -843,7 +850,7 @@ html.phone .hot{width:42px;height:42px}
     } ]
   };
   window.DROPALAND_CHARTER = CHARTER;
-  const PRODUCTION_API_URL = "";
+  const PRODUCTION_API_URL = "https://dropaland.onrender.com";
   const isLocalDev = location.hostname === "localhost" || location.hostname === "127.0.0.1";
   const API_BASE = isLocalDev && location.port !== "3002" ? "http://" + location.hostname + ":3002" : PRODUCTION_API_URL;
   const LIVE_LB = "dropaland:live:players";
@@ -4869,12 +4876,12 @@ html.phone .hot{width:42px;height:42px}
     el("arena").innerHTML = `<div class="panel">\n    <div class="eyebrow">${t("gameCipher") || t("gameSignal")} · ${s.word} · ${mode}</div>\n    <div class="title">${t("cipherTitle")}</div>\n    <div class="desc">${t("cipherDesc")}</div>\n    <div class="cipherHud">\n      <div class="card"><label>${t("hudTarget")}</label><b>${s.target.toFixed(0)}s</b></div>\n      <div class="card"><label>${t("cipherMoves")}</label><b id="cMoves">0</b></div>\n      <div class="card"><label>${t("hudBest")}</label><b>${state.bestScore || 0}</b></div>\n    </div>\n    <div class="cipherWrap"><div class="cipherBoard" id="cBoard"></div></div>\n  </div>`;
     stampGame("gameCipher");
     paint(false);
-    el("cBoard").onclick = e => {
+    el("cBoard").addEventListener("pointerdown", e => {
       const b = e.target.closest(".ctile");
       if (!b) return;
       if (mode === "ice") return;
       tryMove(+b.dataset.i);
-    };
+    });
     if (mode === "ice") {
       let sx = 0, sy = 0, si = -1;
       el("cBoard").addEventListener("pointerdown", e => {
@@ -4888,6 +4895,18 @@ html.phone .hot{width:42px;height:42px}
         if (si < 0) return;
         const dx = e.clientX - sx, dy = e.clientY - sy;
         if (Math.hypot(dx, dy) < 18) {
+          if (!locked && !solved && gen === playGen && neigh(empty).includes(si)) {
+            const tmp = cell[empty];
+            cell[empty] = cell[si];
+            cell[si] = tmp;
+            empty = si;
+            if (!started) {
+              started = true;
+              if (mission) mission.t0 = performance.now();
+              startClock();
+            }
+            afterMove();
+          }
           si = -1;
           return;
         }
@@ -8331,6 +8350,11 @@ html.phone .hot{width:42px;height:42px}
   }
   function offerMobileWallets(box) {
     if (!box) return;
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (!isMobile) {
+      box.innerHTML = "No wallet responded. If you have more than one wallet extension installed (MetaMask, Rabby, etc.), they can conflict with each other — try disabling all but one in your browser's extension settings, then reload this page.";
+      return;
+    }
     const host = location.host + location.pathname;
     const links = [
       { name: "MetaMask", url: "https://metamask.app.link/dapp/" + host },
@@ -8435,15 +8459,11 @@ html.phone .hot{width:42px;height:42px}
   if (el("connectWal")) el("connectWal").onclick = function() {
     connectWallet("recHint");
   };
+  if (el("airdropConnectBtn")) el("airdropConnectBtn").onclick = function() {
+    connectWallet("airdropIntro");
+  };
   if (el("signWal")) el("signWal").onclick = function() {
     signWallet("recHint");
-  };
-  if (el("claimBtn")) el("claimBtn").onclick = function() {
-    if (CHARTER.online.claimContract) {
-      el("holdHint").textContent = t("claimWait");
-      return;
-    }
-    el("holdHint").textContent = t("claimWait");
   };
   el("whoChip").onclick = openGate;
   if (!state.name) {
@@ -8469,12 +8489,15 @@ html.phone .hot{width:42px;height:42px}
   function checkAirdrop() {
     const box = el("airdropResult");
     const intro = el("airdropIntro");
+    const connectBtn = el("airdropConnectBtn");
     if (!box) return;
     if (!state.wallet) {
       if (intro) intro.textContent = "Connect your wallet to check if you're on the list.";
+      if (connectBtn) connectBtn.hidden = false;
       box.innerHTML = "";
       return;
     }
+    if (connectBtn) connectBtn.hidden = true;
     if (!CLAIM_CONTRACT_ADDRESS) {
       if (intro) intro.textContent = "Claim isn't live yet — check back soon.";
       box.innerHTML = "";
